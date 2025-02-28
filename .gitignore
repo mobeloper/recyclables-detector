@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+*.zip
+Jan2025_ver2_merged_1024_1024/
+models/
+
