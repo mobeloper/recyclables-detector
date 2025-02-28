@@ -260,6 +260,8 @@ with gr.Blocks(css=css,analytics_enabled=False,theme=gr.themes.Ocean()) as inter
     run_button.click(fn=process_image, inputs=input_image, outputs=output_image)
 
 
+# http://0.0.0.0:7860/?__theme=light
+
 if __name__ == "__main__":
     interface.launch(
         server_name="0.0.0.0",
