@@ -173,4 +173,5 @@ cython_debug/
 *.zip
 Jan2025_ver2_merged_1024_1024/
 models/
+models/research/
 

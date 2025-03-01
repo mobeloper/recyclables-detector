@@ -248,7 +248,7 @@ footer {display: none !important;}
 # --- Build the Gradio Blocks App ---
 with gr.Blocks(css=css,analytics_enabled=False,theme=gr.themes.Ocean()) as interface:
     gr.Markdown("# ♻️ Recyclables Detector")
-    gr.Markdown("Upload an image and view waste instance segmentation predictions using Mask R-CNN.")
+    gr.Markdown("Upload an image to identify recyclable items")
     
     with gr.Row():
         with gr.Column():
