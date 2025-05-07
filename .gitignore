@@ -183,3 +183,7 @@ dataset-resized/
 
 filtered_dataset/
 normalized_dataset/
+
+*.pth
+*.h5
+*.keras
