@@ -1,0 +1,25 @@
+(circularnet-train) [oysterable@model-training-n1-gpu-nvidia-t4-1 ~]$ pip show tf-models-official
+Name: tf-models-official
+Version: 2.18.0
+Summary: TensorFlow Official Models
+Home-page: https://github.com/tensorflow/models
+Author: Google Inc.
+Author-email: packages@tensorflow.org
+License: Apache 2.0
+Location: /home/oysterable/miniconda3/envs/circularnet-train/lib/python3.12/site-packages
+Requires: ai-edge-litert, Cython, gin-config, google-api-python-client, immutabledict, kaggle, matplotlib, numpy, oauth2client, opencv-python-headless, pandas, Pillow, psutil, py-cpuinfo, pycocotools, pyyaml, sacrebleu, scipy, sentencepiece, seqeval, six, tensorflow, tensorflow-datasets, tensorflow-hub, tensorflow-model-optimization, tensorflow-text, tf-keras, tf-slim
+Required-by: 
+(circularnet-train) [oysterable@model-training-n1-gpu-nvidia-t4-1 ~]$ 
+
+==
+
+(circularnet-train) [oysterable@model-training-n1-gpu-nvidia-t4-1 ~]$ cd ~/miniconda3/envs/circularnet-train/lib/python3.12/site-packages/official/vision/configs/
+(circularnet-train) [oysterable@model-training-n1-gpu-nvidia-t4-1 configs]$ ls
+backbones_3d.py  image_classification.py       maskrcnn_test.py   semantic_segmentation.py
+backbones.py     image_classification_test.py  __pycache__        semantic_segmentation_test.py
+common.py        __init__.py                   retinanet.py       video_classification.py
+decoders.py      maskrcnn.py                   retinanet_test.py  video_classification_test.py
+(circularnet-train) [oysterable@model-training-n1-gpu-nvidia-t4-1 configs]$ 
+
+
+

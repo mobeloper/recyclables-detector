@@ -176,8 +176,22 @@ def display_bbox_masks_labels(
     )
     return image_new
 
+CircularNet is 
+
 # --- Download and Load the Pre-trained Model ---
-MODEL_DIR = "Jan2025_ver2_merged_1024_1024"
+
+### 1 Model Strategy (latest model)
+# MODEL_DIR = "Jan2025_ver2_merged_1024_1024" # Material Type & Form	Resnet (latest)
+
+
+### 2 Model Strategy combines plastic type and material type identifications into a unified model. V2 version is trained on larger datasets than v1
+# MODEL_DIR = "material_version_2" # Material Type Model	Resnet
+MODEL_DIR = "resnet_material_v2"  # Material Type Model V2	Resnet
+# MODEL_DIR = "mobilenet_material"  # Material Type Model V2 MobileNet
+# MODEL_DIR = "mobilenet_material_form"  # Material Form Model V2	MobileNet
+
+
+
 if not os.path.exists(MODEL_DIR):
     zip_path = f"{MODEL_DIR}.zip"
     if not os.path.exists(zip_path):
@@ -187,10 +201,14 @@ if not os.path.exists(MODEL_DIR):
 detection_fn = load_model(MODEL_DIR)
 
 # --- Load Label Map Data ---
-LABELS_PATH = (
-    'models/official/projects/waste_identification_ml/pre_processing/'
-    'config/data/45_labels.csv'
-)
+
+# https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml/pre_processing/config/data
+
+# LABELS_FILE = "45_labels.csv" #for 1 Model strategy
+LABELS_FILE = "two_model_strategy_material.csv" #for 2 Model strategy
+
+LABELS_PATH = (f"models/official/projects/waste_identification_ml/pre_processing/config/data/{LABELS_FILE}")
+
 labels, category_index = load_labels(LABELS_PATH)
 
 # --- Constants ---

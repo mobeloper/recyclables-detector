@@ -1,0 +1,19 @@
+annotation_file - path to the validation file in COCO JSON format. >>> /home/oysterable/coco_val.json (path to the validation dataset only? not the entire dataset annotation file??)
+init_checkpoint - path to the checkpoints for transfer learning, these be the CircularNet checkpoints. >>> /home/oysterable/mask_rcnn_inception_resnet_v2_1024x1024_coco17_gpu-8/checkpoint
+init_checkpoint_modules - to load both the backbone or decoder or any one of them. >>> [backbone, decoder]
+freeze_backbone - to freeze backbone while training. >>> false
+input_size - image size according to which the model is trained. >>> [1024, 1024, 3]
+num_classes - total number of classes + 1 ( background ) >>> 3+1=4
+per_category_metrics - to derive metric for each class >>> true
+global_batch_size - batch size. >>> 64
+input_path - path to the input dataset set. >>/home/oysterable/rc40tfrecords/train/*
+parser - contains the data augmentation operations. >> sames as your sample
+steps_per_loop - number of steps to complete one epoch. It's usually training data size / batch size. >>> 14
+summary_interval - interval to plot the metrics >>> 14
+train_steps - total steps for training. Its equal to steps_per_loop x epochs >>> 700
+validation_interval - interval to evaluate the validation data. >>> 14
+validation_steps - steps to cover validation data. Its equal to validation data size / batch size >>> 9
+warmup_learning_rate - the warm-up phase is an initial stage in the training process where the learning rate is gradually increased from a very low value to the base learning rate. The warmup_learning_rate is typically set to a small fraction of the base learning rate >>> 0.0001
+warmup_steps - steps for the warmup learning rate >>> 140
+initial_learning_rate - The initial learning rate is the value of the learning rate at the very start of the training process. >>> 0.001
+checkpoint_interval - number of steps to export the model. >>> 700
