@@ -184,6 +184,15 @@ dataset-resized/
 filtered_dataset/
 normalized_dataset/
 
+rc40_tfrecords/
+
+fingerprint.pb
+saved_model.pb
+
+finetuned_model/variables/
+
 *.pth
 *.h5
 *.keras
+
+*.onnx
