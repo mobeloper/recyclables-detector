@@ -124,26 +124,43 @@ if __name__ == "__main__":
     # Option 1: Provide an image path as a command-line argument
     if len(sys.argv) > 1:
         image_to_predict_path = sys.argv[1]
-        output_image_path = "output_detections.jpg" # Default output file name
+        # CHANGE HERE: Define the output path INSIDE the container's mounted directory
+        # We will mount a host directory to /app/output in the Docker command
+        output_dir_in_container = "/app/output"
+        output_image_filename = os.path.basename(image_to_predict_path).replace('.', '_detections.') # e.g., test_pet1_detections.png
 
+        # Allow user to specify a custom output filename as 3rd arg, otherwise use generated name
         if len(sys.argv) > 2:
-            output_image_path = sys.argv[2] # Allow custom output path
+            custom_output_filename = sys.argv[2]
+            # Ensure custom_output_filename is just a filename, not a path
+            if "/" in custom_output_filename or "\\" in custom_output_filename:
+                print("Warning: Custom output filename should not contain directory separators. Using base name.")
+                custom_output_filename = os.path.basename(custom_output_filename)
+            output_image_filename = custom_output_filename
+
+        output_image_path = os.path.join(output_dir_in_container, output_image_filename)
+
+        # Ensure the output directory exists inside the container (it will if mounted)
+        os.makedirs(output_dir_in_container, exist_ok=True)
+
 
         detections = predict_image(image_to_predict_path)
 
         if detections:
-            # You can process 'detections' further here (e.g., save to JSON, send over network)
             print(f"Detections found: {detections}")
 
-            # Optionally visualize and save the annotated image
             annotated_image = visualize_detections(image_to_predict_path, detections)
             if annotated_image:
                 annotated_image.save(output_image_path)
                 print(f"Annotated image saved to: {output_image_path}")
     else:
-        print("Usage: python inference.py <path_to_input_image.jpg> [path_to_output_image.jpg]")
+        print("Usage: python inference.py <path_to_input_image.jpg> [output_filename.jpg]")
         print("\nExample: To test with a dummy image (ensure 'test_image.jpg' exists):")
         print("python inference.py test_image.jpg")
+        print("This will save output to output_images/test_image_detections.jpg on your host.")
+        print("\nTo specify a custom output filename:")
+        print("python inference.py test_image.jpg my_output.jpg")
+        print("This will save output to output_images/my_output.jpg on your host.")
         print("\nTo specify model path or confidence threshold via environment variables:")
         print("export MODEL_PATH=\"./path/to/your/loopvision_2025Jun25.pth\"")
         print("export CONFIDENCE_THRESHOLD=\"0.7\"")

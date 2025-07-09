@@ -1,0 +1,10 @@
+numpy<2
+torch
+torchvision
+Pillow
+supervision
+rfdetr
+fastapi
+uvicorn[standard]
+python-multipart
+gunicorn

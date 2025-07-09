@@ -1,29 +1,39 @@
 
 
-# Build docker image
+# Build the docker image
 docker build -t loopvision-v1-app .
 
 # Run Docker container
-docker run --rm -v $(pwd)/test_image.jpg:/app/test_image.jpg loopvision-v1-app python inference.py test_image.jpg
+docker run --rm -v $(pwd)/test_pet1.png:/app/test_pet1.png loopvision-v1-app python inference.py test_pet1.png
 
--v $(pwd)/test_image.jpg:/app/test_image.jpg - This mounts your local test_image.jpg into the container at /app/test_image.jpg. This is better than COPYing every test image.
+-v $(pwd)/test_pet1.png:/app/test_pet1.png - This mounts your local test_pet1.png into the container at /app/test_pet1.png. This is better than COPYing every test image.
 
->>>loopvision-v1-app python inference.py test_image.jpg - Overrides the default CMD to run your script with the mounted image.
+>>>loopvision-v1-app python inference.py test_pet1.png - Overrides the default CMD to run your script with the mounted image.
 
 
 >>For GPU: 
 docker run --rm --gpus all --ipc=host loopvision-v1-app
-docker run --rm --gpus all --ipc=host -v $(pwd)/test_image.jpg:/app/test_image.jpg loopvision-v1-app python inference.py test_image.jpg
+docker run --rm --gpus all --ipc=host -v $(pwd)/test_pet1.png:/app/test_pet1.png loopvision-v1-app python inference.py test_pet1.png
 
 or When running FastAPI app: 
 docker run -p 5000:5000 --gpus all --rm loopvision-v1-app
 (maps container port 5000 to host port 5000).
 
+# mount a volume for the output as well:
+docker run --rm \
+  -v "$(pwd)/test_pet1.png:/app/test_pet1.png" \
+  -v "$(pwd)/OutputPredictions:/app/output" \
+  loopvision-v1-app python inference.py test_pet1.png
+
+docker run --rm \
+  -v "$(pwd)/test_can1.png:/app/test_can1.png" \
+  -v "$(pwd)/OutputPredictions:/app/output" \
+  loopvision-v1-app python inference.py test_can1.png
 
 
 ### Running with environment variables (e.g., custom confidence threshold):
 
-docker run --rm --gpus all --ipc=host -v $(pwd)/test_image.jpg:/app/test_image.jpg -e CONFIDENCE_THRESHOLD=0.7 loopvision-inference python inference.py test_image.jpg
+docker run --rm --gpus all --ipc=host -v $(pwd)/test_pet1.png:/app/test_pet1.png -e CONFIDENCE_THRESHOLD=0.7 loopvision-inference python inference.py test_pet1.png
 
 
 
