@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loopvision-gpu-api-deployment
+spec:
+  replicas: 1 # Start with 1 replica for initial testing, adjust later
+  selector:
+    matchLabels:
+      app: loopvision-gpu-api
+  template:
+    metadata:
+      labels:
+        app: loopvision-gpu-api
+    spec:
+      containers:
+      - name: loopvision-inference-container
+        image: asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-api-gpu:v1 # Change this when new image created
+        ports:
+        - containerPort: 5050
+        resources:
+          limits:
+            cpu: "4" # Request 4 CPU cores (matches GKE node config, allows Gunicorn -w 4)
+            memory: "8Gi" # Request 8GB memory (matches GKE node config)
+            nvidia.com/gpu: "1" # Request 1 GPU per pod
+          requests: # Set requests lower than limits to allow bursting, but ensures baseline
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+        env:
+        - name: MODEL_PATH
+          value: "./loopvision_2025Jun25.pth"
+      nodeSelector: # Ensures pod runs on GPU nodes
+        cloud.google.com/gke-accelerator: "true"
+      tolerations: # Allows pod to be scheduled on tainted GPU nodes
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loopvision-gpu-api-service
+spec:
+  selector:
+    app: loopvision-gpu-api
+  ports:
+    - protocol: TCP
+      port: 80 # External port for the service
+      targetPort: 5050 # Port your container listens on
+  type: LoadBalancer # Exposes service publicly with a load balancer

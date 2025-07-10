@@ -1,0 +1,31 @@
+# Dockerfile.gpu
+# Base image for GPU execution (NVIDIA PyTorch with CUDA)
+# Choose a recent stable version that matches your CUDA toolkit and PyTorch needs
+FROM nvcr.io/nvidia/pytorch:24.05-py3 
+
+
+WORKDIR /app
+
+# No PYTORCH_ENABLE_MPS_FALLBACK needed here, as we expect real GPUs.
+# No libgl1-mesa-glx needed, as NVIDIA base images usually include necessary system libs.
+
+# Copy requirements.txt and install Python dependencies
+COPY requirements.txt .
+# Install with --no-cuda-version-check if you encounter issues with specific PyTorch versions
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy your model file
+COPY loopvision_2025Jun25.pth .
+
+# Copy your FastAPI application code
+COPY main.py .
+
+# Expose the port your FastAPI app will listen on
+EXPOSE 5050
+
+# Command to run FastAPI app with Gunicorn managing Uvicorn workers
+# -w: Number of workers. For GPUs, it's often 1 worker per GPU to avoid contention,
+#     or more if your inference is highly multi-threaded *per worker*.
+#     Here, 4 workers to match 4 GPUs, assuming each worker can access one GPU.
+#     This assumes RFDETRBase handles device assignment (e.g., using CUDA_VISIBLE_DEVICES).
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5050", "main:app"]

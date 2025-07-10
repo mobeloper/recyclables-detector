@@ -18,14 +18,17 @@ conda activate fastapi-env
 
 uvicorn main:app --host 0.0.0.0 --port 5050 --reload
 
+
 ### with docker:
-docker build -t loopvision-v1-app .
+
+docker build -f Dockerfile.cpu --no-cache -t loopvision-local-cpu-app .
 
 docker run --rm \
-  -v "$(pwd)/test_pet1.png:/app/test_pet1.png" \
+  -v "$(pwd)/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png:/app/test_image.png" \
   -v "$(pwd)/OutputPredictions:/app/output" \
   -p 5050:5050 \
-  loopvision-v1-app
+  loopvision-local-cpu-app
+
 
 ### test predictions
 curl -X POST \
@@ -51,9 +54,6 @@ gcloud config set compute/region asia-northeast3
 gcloud auth configure-docker asia-northeast3-docker.pkg.dev
 
 
-Navigate to your project directory (where `Dockerfile`, `main.py`, `requirements.txt`, `model.pth` are located).
-
-
 # (if necessary) create artifact repo
 ```
 gcloud artifacts repositories create docker-ai-model-repo \
@@ -63,46 +63,153 @@ gcloud artifacts repositories create docker-ai-model-repo \
 ```
 
 
-# Build and Push Your Docker Image to Artifact Registry:
+### clean memory
+docker system prune --all --volumes --force
+
+
+# Build and Push Your Docker Image with GPUs to Artifact Registry:
+
+Navigate to your project directory (where `Dockerfile`, `main.py`, `requirements.txt`, `model.pth` are located).
 
 ### Define your image name for Artifact Registry
 (Format: LOCATION-docker.pkg.dev/PROJECT-ID/REPOSITORY_NAME/IMAGE_NAME:TAG)
 
-IMAGE_NAME="asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-api:v1"
+<!-- 
+IMAGE_NAME="asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-service:v1" 
+-->
 
->>>>>
+IMAGE_NAME="asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-api-gpu:v1"
+
+
 ### Build the Docker image
-docker build -t "${IMAGE_NAME}" .
+
+docker build -f Dockerfile.gpu --no-cache -t "${IMAGE_NAME}" .
 
 ### Push the image to Artifact Registry
 docker push "${IMAGE_NAME}"
 
+see:
+https://console.cloud.google.com/artifacts?authuser=3&inv=1&invt=Ab2R_w&project=ai-platform-453201&supportedpurview=project
 
+
+<!-- 
 # Deploy to Cloud Run
-gcloud run deploy loopvision-inference-service \
-  --image asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-api:v1 \
-  --platform managed \
-  --region asia-northeast3 \
-  --allow-unauthenticated \
+
   --memory 2Gi \ # Adjust based on your model size (e.g., 2Gi, 4Gi, 8Gi)
   --cpu 2 \     # Adjust based on inference demand, consider # of Gunicorn workers
   --min-instances 0 \ # Scale to zero when idle
   --max-instances 1 \ # Start with a low max instance count for testing, increase later
-  --port 5050 \   # This matches the EXPOSE and Gunicorn port in your Dockerfile
+  --port 5050 \   # Must match the EXPOSE and Gunicorn port in your Dockerfile
+
+
+gcloud run deploy loopvision-inference-service \
+  --image "${IMAGE_NAME}" \
+  --platform managed \
+  --region asia-northeast3 \
+  --allow-unauthenticated \
+  --memory 8Gi \
+  --cpu 2 \
+  --min-instances 0 \
+  --max-instances 5 \
+  --concurrency 8 \
+  --port 5050 \
   --set-env-vars MODEL_PATH="./loopvision_2025Jun25.pth"
 
 
 Get the output URL endpoint for predictions.
-Ex)
+Example:
+Service URL: https://loopvision-inference-service-3493613107.asia-northeast3.run.app
 
-
-
+See:
+https://console.cloud.google.com/run?referrer=search&authuser=3&project=ai-platform-453201&supportedpurview=project&inv=1&invt=Ab2SAA
 
 # Test Cloud Run API:
+
 curl -X POST \
   -H "Content-Type: multipart/form-data" \
-  -F "image=@test_pet1.png" \
-  YOUR_SERVICE_URL/predict
+  -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png" \
+  https://loopvision-inference-service-3493613107.asia-northeast3.run.app/predict 
+
+-->
+
+
+
+
+# GPU Endpoint Deployment
+
+# Deploy to Google Kubernetes Engine (GKE) with GPU Nodes:
+
+
+### Enable GKE API and Request GPU Quota:
+gcloud services enable container.googleapis.com
+
+gcloud components install gke-gcloud-auth-plugin
+
+### Create a GKE Cluster (if you don't have one):
+--num-nodes 0 \ # Start with 0 initial CPU nodes in default pool
+
+gcloud container clusters create loopvision-gpu-cluster \
+  --region asia-northeast3 \
+  --release-channel "regular" \
+  --num-nodes 1 \
+  --node-locations asia-northeast3-b,asia-northeast3-c
+
+### See the clusters generated:
+gcloud container clusters list --region asia-northeast3
+
+gcloud container clusters get-credentials loopvision-gpu-cluster --region asia-northeast3
+
+
+## Create a GPU Node Pool:
+
+  --machine-type n1-standard-8 \ # Or a suitable machine type for T4s (e.g., n1-standard-X, g2-standard-X)
+  --accelerator "type=nvidia-tesla-t4,count=1" \ # 1 T4 GPU per node
+  --num-nodes 1 \ # Start with 1 node, can scale up
+  --min-nodes 1 \ # Keep at least one GPU node warm
+  --max-nodes 4 \ # Scale up to 4 GPU nodes (total 4 GPUs)
+  --enable-autoscaling \
+  --node-locations asia-northeast3-a,asia-northeast3-b \ # Should be in zones where T4s are available
+  --disk-size 100GB \ # Ensure enough disk space for the large image
+
+gcloud container node-pools create gpu-node-pool \
+  --cluster loopvision-gpu-cluster \
+  --region asia-northeast3 \
+  --machine-type n1-standard-8 \
+  --accelerator "type=nvidia-tesla-t4,count=1" \
+  --num-nodes 1 \
+  --min-nodes 1 \
+  --max-nodes 4 \
+  --enable-autoscaling \
+  --node-locations asia-northeast3-b,asia-northeast3-c \
+  --node-version 1.32.4-gke.1415000 \
+  --disk-size 100GB
+
+
+See:
+https://console.cloud.google.com/kubernetes/list/overview?authuser=3&inv=1&invt=Ab2UJg&project=ai-platform-453201&supportedpurview=project
+
+https://container.googleapis.com/v1/projects/ai-platform-453201/zones/asia-northeast3/clusters/loopvision-gpu-cluster/nodePools/gpu-node-pool
+
+
+### Apply the Kubernetes Manifests:
+
+kubectl apply -f k8s-deployment.yaml
+
+kubectl get service loopvision-gpu-api-service
+
+
+
+# Test Predictions in the endpoint:
+
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png" \
+  http://EXTERNAL_IP/predict # Use the IP you got from kubectl get service
+
+
+
+
+
 
 
 

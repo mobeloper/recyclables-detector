@@ -20,8 +20,8 @@ CLASS_NAMES = ["CANS", "PET"]
 # Initialize FastAPI app
 app = FastAPI(
     title="RFDETRBase Inference API",
-    description="API for detecting CANS and PET using a custom RFDETRBase model.",
-    version="1.0.0",
+    description="API for detecting CANS and PET using DETR architecture model.",
+    version="1.0.1",
 )
 
 # Global variable to hold the loaded model
@@ -71,7 +71,10 @@ async def predict_image_api(image: UploadFile = File(...)):
         pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
         # Perform inference using the loaded model
-        detections = model.predict(pil_image, threshold=CONFIDENCE_THRESHOLD)
+        # detections = model.predict(pil_image, threshold=CONFIDENCE_THRESHOLD)
+        with torch.inference_mode():
+            detections = model.predict(pil_image, threshold=CONFIDENCE_THRESHOLD)
+
 
         # Prepare results for JSON response
         results = []
