@@ -12,29 +12,120 @@ install dependencies:
 pip install -r requirements.txt
 
 
-### run locally:
+## run locally:
 
 conda activate fastapi-env
+(conda activate /Users/oysterable/anaconda3/envs/fastapi-env)
 
-uvicorn main:app --host 0.0.0.0 --port 5050 --reload
+pip install -r requirements.txt 
+
+export PYTORCH_ENABLE_MPS_FALLBACK=1 
+
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+### Access local server:
+You can access local server at http://localhost:8000.
 
 
-### with docker:
+A. Health Check (GET /)
+This is a simple request to verify that your application is live and the model has loaded successfully.
 
+curl http://localhost:8000/
+
+Expected Response:
+{"status":"healthy","model_loaded":true}
+
+
+B. Predict (POST /predict)
+This request sends an image file to your /predict endpoint and expects a JSON response with the detected objects.
+
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@/Users/oysterable/delete/recyclables-detector/recycling_detection_fastapi/fastapi_app/test_can1.png" \
+  http://localhost:8000/predict
+
+
+Expected Response:
+
+A JSON object containing an array of detections.
+
+{
+  "detections": [
+    {
+      "box": { "x1": 493.94, "y1": 297.65, "x2": 781.37, "y2": 590.48 },
+      "confidence": 0.9589,
+      "class_id": 0,
+      "label": "CANS"
+    }
+    // ... potentially more detections
+  ]
+}
+
+
+C. Visualize and Predict (POST /visualize_predict)
+This request sends an image and expects an annotated image in return. You can save this image to a local file using curl's --output flag.
+
+
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@/Users/oysterable/delete/recyclables-detector/recycling_detection_fastapi/fastapi_app/test_can1.png" \
+  http://localhost:8000/visualize_predict \
+  --output /Users/oysterable/delete/recyclables-detector/recycling_detection_fastapi/fastapi_app/annotated_prediction.png
+  
+--output annotated_prediction.png: This flag tells curl to save the received image data to a file named annotated_prediction.png in your current directory. You can then open this file to see the visual results.
+
+
+
+
+## Deploy locally with Docker (local [cpu]):
 docker build -f Dockerfile.cpu --no-cache -t loopvision-local-cpu-app .
 
+if errors, clean up unused space:
+  docker system prune --all --volumes --force
+
+
+
+
+### Run the docker image:
+
+The docker run command's port mapping must match the port specified in your main.py code. The syntax is -p [host port]:[container port].
+
+
 docker run --rm \
-  -v "$(pwd)/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png:/app/test_image.png" \
-  -v "$(pwd)/OutputPredictions:/app/output" \
+  -v "$(pwd)/annotations:/app/annotations" \
   -p 5050:5050 \
   loopvision-local-cpu-app
 
 
+### Access local server:
+You can access the Docker container at http://localhost:5050.
+
+
+
 ### test predictions
+
+[pet]
+
 curl -X POST \
   -H "Content-Type: multipart/form-data" \
   -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png" \
   http://localhost:5050/predict
+
+
+[can]
+
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/captured_1730349144841.png" \
+  http://localhost:5050/predict
+
+
+### Visualize Prediction
+
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/captured_1730349144841.png" \
+  http://localhost:5050/visualize_predict --output /Users/oysterable/delete/recyclables-detector/recycling_detection_fastapi/fastapi_app/annotated_prediction.png
 
 
 
@@ -155,9 +246,15 @@ gcloud container clusters create loopvision-gpu-cluster \
   --node-locations asia-northeast3-b,asia-northeast3-c
 
 ### See the clusters generated:
-gcloud container clusters list --region asia-northeast3
+$ gcloud container clusters list --region asia-northeast3
 
-gcloud container clusters get-credentials loopvision-gpu-cluster --region asia-northeast3
+This command will add/update the cluster's credentials in your ~/.kube/config file.
+$ gcloud container clusters get-credentials loopvision-gpu-cluster --region asia-northeast3
+
+
+Then, try a basic kubectl command to list nodes:
+$ kubectl get nodes
+
 
 
 ## Create a GPU Node Pool:
@@ -204,7 +301,58 @@ kubectl get service loopvision-gpu-api-service
 curl -X POST \
   -H "Content-Type: multipart/form-data" \
   -F "image=@/Users/oysterable/delete/recyclables-detector/rc40cocodataset_splitted/test/images/5b706395-c141-41d9-8b8c-b7d07a684094.png" \
-  http://EXTERNAL_IP/predict # Use the IP you got from kubectl get service
+  http://34.64.193.133/predict
+
+
+
+
+
+# Stop Charges:
+
+## GKE Cluster
+GKE clusters and their node pools are a major source of cost. To stop charges without deleting the cluster, you should scale the node pools down to zero nodes. This keeps the cluster's control plane running (which has a small, static cost) but stops all charges for the actual worker machines.
+
+Scale Down Node Pools to Pause
+To scale down the gpu-node-pool to 0 nodes:
+
+$ gcloud container clusters resize loopvision-gpu-cluster --node-pool gpu-node-pool --num-nodes=0 --region asia-northeast3
+
+To reactivate by scaling back up to a specific number of nodes (e.g., 1):
+
+$ gcloud container clusters resize loopvision-gpu-cluster --node-pool gpu-node-pool --num-nodes=1 --region asia-northeast3
+
+This will provision a new node, and your deployment will automatically get scheduled on it.
+
+
+# Cloud Run Service
+Cloud Run is a serverless platform, so it scales down to zero instances by default when it's not being used. The simplest way to "pause" it and stop all charges is to set the minimum number of instances to zero.
+
+To check the current configuration:
+
+$ gcloud run services describe loopvision-inference-service --region asia-northeast3
+Look for the min-instances setting.
+
+To set min-instances to 0 (pause):
+
+gcloud run services update loopvision-inference-service --min-instances=0 --region asia-northeast3
+To set min-instances back to 1 or higher (reactivate):
+
+Bash
+
+gcloud run services update loopvision-inference-service --min-instances=1 --region asia-northeast3
+This will spin up a warm instance again, eliminating the cold start for the next request.
+
+
+
+## Artifact Registry
+Artifact Registry is a storage service. It charges based on the amount of data stored and network egress. The only way to stop these charges is to delete the stored images or the repository itself. You can't "pause" a repository.
+To delete the entire repository and all images within it:
+
+$ gcloud artifacts repositories delete docker-ai-model-repo --location=asia-northeast3 --quiet
+
+If you do this, you'll need to rebuild and push your Docker image again when you resume.
+
+
 
 
 

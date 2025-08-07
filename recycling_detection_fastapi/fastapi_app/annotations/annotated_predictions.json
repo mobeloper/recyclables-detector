@@ -1,0 +1,38 @@
+{
+    "info": {},
+    "licenses": [],
+    "categories": [
+        {
+            "id": 0,
+            "name": "CANS"
+        },
+        {
+            "id": 1,
+            "name": "PET"
+        }
+    ],
+    "images": [
+        {
+            "id": "7d35c2b3-4bc8-4f58-96c0-cb2b7748fac5",
+            "file_name": "annotations/images/5b706395-c141-41d9-8b8c-b7d07a684094.png",
+            "width": 1024,
+            "height": 1024
+        }
+    ],
+    "annotations": [
+        {
+            "id": 1,
+            "image_id": "7d35c2b3-4bc8-4f58-96c0-cb2b7748fac5",
+            "category_id": 1,
+            "bbox": [
+                158.37933349609375,
+                298.0939025878906,
+                476.6514892578125,
+                277.5756530761719
+            ],
+            "score": 0.9471863508224487,
+            "iscrowd": 0,
+            "area": 132306.84842046723
+        }
+    ]
+}

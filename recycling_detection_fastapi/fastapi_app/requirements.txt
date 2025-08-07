@@ -1,6 +1,6 @@
-numpy<2
 torch
 torchvision
+numpy<2.0
 Pillow
 supervision
 rfdetr
