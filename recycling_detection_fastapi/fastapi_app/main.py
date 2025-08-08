@@ -1,4 +1,14 @@
 # main.py
+
+# ## This file includes the following features:
+# - The FastAPI framework with endpoints for prediction and visualization.
+# - The AI model loading logic using pretrain_weights.
+# - An on_event("startup") function to load the model once.
+# - torch.inference_mode() for optimal performance.
+# - A data pipeline to save incoming predictions as COCO-formatted annotations  #   and save the corresponding images.
+# - A local development server running on port 8000.
+
+
 import sys
 import os
 import torch

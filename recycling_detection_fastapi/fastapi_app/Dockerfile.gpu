@@ -1,18 +1,36 @@
 # Dockerfile.gpu
-# Base image for GPU execution (NVIDIA PyTorch with CUDA)
-# Choose a recent stable version that matches your CUDA toolkit and PyTorch needs
-FROM nvcr.io/nvidia/pytorch:24.05-py3 
-
+## FROM nvcr.io/nvidia/pytorch:24.05-py3
+# Base image for GPU execution (Official PyTorch image)
+FROM pytorch/pytorch:2.4.0-cuda11.8-cudnn9-runtime
 
 WORKDIR /app
 
-# No PYTORCH_ENABLE_MPS_FALLBACK needed here, as we expect real GPUs.
-# No libgl1-mesa-glx needed, as NVIDIA base images usually include necessary system libs.
+# The necessary system libraries are already included in this base image.
+# We will run apt-get again to be safe.
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements.txt and install Python dependencies
+# Upgrade pip first
+RUN python -m pip install --upgrade pip
+
+# Check Python version
+RUN python --version && python -c "import sys; print('Python path:', sys.executable)"
+
+# Install requirements with --no-cache-dir to avoid cache issues
 COPY requirements.txt .
-# Install with --no-cuda-version-check if you encounter issues with specific PyTorch versions
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
+# Clear Python cache, updated for Python 3.12
+RUN find /usr/local/lib/python3.12 -name "*.pyc" -delete 2>/dev/null || true && \
+    find /usr/local/lib/python3.12 -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Debug: Check what versions were actually installed
+RUN python -m pip list | grep -E "(opencv|supervision|numpy)"
+
+# Test imports during build to catch issues early
+RUN python -c "import supervision as sv; import cv2; print('OpenCV version:', cv2.__version__); print('Supervision version:', sv.__version__); print('All imports successful')"
 
 # Copy your model file
 COPY loopvision_2025Jun25.pth .
@@ -20,12 +38,11 @@ COPY loopvision_2025Jun25.pth .
 # Copy your FastAPI application code
 COPY main.py .
 
+# Test your main application imports
+RUN python -c "import main; print('Main application imports successful')"
+
 # Expose the port your FastAPI app will listen on
 EXPOSE 5050
 
 # Command to run FastAPI app with Gunicorn managing Uvicorn workers
-# -w: Number of workers. For GPUs, it's often 1 worker per GPU to avoid contention,
-#     or more if your inference is highly multi-threaded *per worker*.
-#     Here, 4 workers to match 4 GPUs, assuming each worker can access one GPU.
-#     This assumes RFDETRBase handles device assignment (e.g., using CUDA_VISIBLE_DEVICES).
 CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5050", "main:app"]
