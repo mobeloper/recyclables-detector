@@ -1,10 +1,16 @@
 # k8s-deployment.yaml
+# This manifest deploys your FastAPI application on a GKE GPU node pool.
+# It uses Workload Identity to securely access Google Cloud Storage.
+
+# ----------------------------------------------------------------
+# Deployment for the FastAPI application
+# ----------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: loopvision-gpu-api-deployment
 spec:
-  replicas: 1
+  replicas: 1 # Start with 1 pod, can be scaled up later.
   selector:
     matchLabels:
       app: loopvision-gpu-api
@@ -13,31 +19,49 @@ spec:
       labels:
         app: loopvision-gpu-api
     spec:
+      # Use the Kubernetes Service Account configured for Workload Identity
+      serviceAccountName: gke-predictions-writer
+      
       containers:
       - name: loopvision-inference-container
+        # The full image path from your Artifact Registry
         image: asia-northeast3-docker.pkg.dev/ai-platform-453201/docker-ai-model-repo/loopvision-inference-api-gpu:v1
+        
         ports:
-        - containerPort: 5050
+        - containerPort: 5050 # Your FastAPI/Gunicorn port
+        
         resources:
           limits:
             cpu: "4"
             memory: "8Gi"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "1" # CRITICAL: This requests one GPU
           requests:
             cpu: "2"
             memory: "4Gi"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "1" # CRITICAL: This requests one GPU
+
+        # Environment variables for your application
         env:
         - name: MODEL_PATH
           value: "./loopvision_2025Jun25.pth"
-        - name: PYTORCH_ENABLE_MPS_FALLBACK
+        - name: GCS_BUCKET_NAME
+          value: "loopvision-predictions-bucket"
+        - name: PYTORCH_ENABLE_MPS_FALLBACK # A good practice for portability
           value: "1"
-      nodeSelector: # Use the correct label
+
+      # Node Selector to ensure the pod is scheduled on a GPU node pool
+      nodeSelector:
         cloud.google.com/gke-accelerator: "nvidia-tesla-t4"
+
+      # Tolerations to allow the pod to be scheduled on the tainted GPU nodes
       tolerations:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
+
+# ----------------------------------------------------------------
+# Service to expose the deployment publicly
+# ----------------------------------------------------------------
 ---
 apiVersion: v1
 kind: Service
@@ -48,6 +72,6 @@ spec:
     app: loopvision-gpu-api
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 5050
-  type: LoadBalancer
+      port: 80 # The public port of the load balancer
+      targetPort: 5050 # The container port that receives the traffic
+  type: LoadBalancer # Creates a public Load Balancer with an external IP
